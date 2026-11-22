@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { PrinterShowcase } from './components/PrinterShowcase';
 import { OrderForm } from './components/OrderForm';
+import { ContactPage } from './components/ContactPage';
 import { LoginModal } from './components/LoginModal';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { Footer } from './components/Footer';
@@ -10,11 +11,35 @@ import { User, PrinterStatus, PrintOrderResponse } from './types';
 import { api } from './api';
 
 export const App: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState<'home' | 'contact'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [successOrder, setSuccessOrder] = useState<PrintOrderResponse | null>(null);
   const [printerStatus, setPrinterStatus] = useState<PrinterStatus | null>(null);
   const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
+
+  // Obsługa routingu po hashu (#contact / #order-section / ...)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === '#contact') {
+        setCurrentPage('contact');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setCurrentPage('home');
+        if (hash && hash !== '#') {
+          const targetId = hash.replace('#', '');
+          setTimeout(() => {
+            document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Sprawdzanie statusu drukarki i połączenia z FastAPI
   useEffect(() => {
@@ -25,7 +50,6 @@ export const App: React.FC = () => {
         const status = await api.getPrinterStatus();
         if (isMounted) {
           setPrinterStatus(status);
-          // Jeśli odpowiedź przyszła z prawdziwego serwera lub demo
           setIsBackendConnected(true);
         }
       } catch (err) {
@@ -44,12 +68,33 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  const handleNavigate = (page: 'home' | 'contact', targetId?: string) => {
+    if (page === 'contact') {
+      setCurrentPage('contact');
+      window.location.hash = 'contact';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setCurrentPage('home');
+      if (targetId) {
+        window.location.hash = targetId;
+        setTimeout(() => {
+          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+        }, 80);
+      } else {
+        if (window.location.hash === '#contact') {
+          window.history.pushState(null, '', window.location.pathname);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
   const scrollToOrder = () => {
-    document.getElementById('order-section')?.scrollIntoView({ behavior: 'smooth' });
+    handleNavigate('home', 'order-section');
   };
 
   const scrollToSpecs = () => {
-    document.getElementById('printer-specs')?.scrollIntoView({ behavior: 'smooth' });
+    handleNavigate('home', 'printer-specs');
   };
 
   const handleLogout = () => {
@@ -65,28 +110,39 @@ export const App: React.FC = () => {
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onLogout={handleLogout}
         isBackendConnected={isBackendConnected}
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
       />
 
-      {/* Główna zawartość Landing Page */}
+      {/* Główna zawartość */}
       <main className="flex-grow">
-        {/* Sekcja Hero */}
-        <Hero
-          onScrollToOrder={scrollToOrder}
-          onScrollToSpecs={scrollToSpecs}
-        />
+        {currentPage === 'contact' ? (
+          <ContactPage onBackToHome={() => handleNavigate('home')} />
+        ) : (
+          <>
+            {/* Sekcja Hero */}
+            <Hero
+              onScrollToOrder={scrollToOrder}
+              onScrollToSpecs={scrollToSpecs}
+            />
 
-        {/* Prezentacja Creality K1 Max */}
-        <PrinterShowcase status={printerStatus} />
+            {/* Prezentacja Creality K1 Max */}
+            <PrinterShowcase status={printerStatus} />
 
-        {/* Formularz zamówienia z uploadem plików */}
-        <OrderForm
-          user={user}
-          onOrderSuccess={(order) => setSuccessOrder(order)}
-        />
+            {/* Formularz zamówienia z uploadem plików */}
+            <OrderForm
+              user={user}
+              onOrderSuccess={(order) => setSuccessOrder(order)}
+            />
+          </>
+        )}
       </main>
 
       {/* Stopka */}
-      <Footer />
+      <Footer 
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
+      />
 
       {/* Modal Logowania */}
       <LoginModal

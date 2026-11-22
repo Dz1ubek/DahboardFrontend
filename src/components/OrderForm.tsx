@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { MaterialType, InfillType, LayerHeightType, PrintOrderRequest, PrintOrderResponse, User } from '../types';
 import { api } from '../api';
+import { ModelViewer3D, ModelMetrics } from './ModelViewer3D';
 
 interface OrderFormProps {
   user: User | null;
@@ -65,6 +66,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ user, onOrderSuccess }) =>
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [modelMetrics, setModelMetrics] = useState<ModelMetrics | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,12 +95,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({ user, onOrderSuccess }) =>
   };
 
   const validateAndSetFile = (file: File) => {
-    const validExtensions = ['.stl', '.obj', '.3mf', '.gcode', '.step'];
+    const validExtensions = ['.stl', '.obj', '.3mf', '.ply', '.gcode', '.step'];
     const fileName = file.name.toLowerCase();
     const isValid = validExtensions.some(ext => fileName.endsWith(ext));
 
     if (!isValid) {
-      setErrorMessage('Dozwolone są wyłącznie pliki modeli 3D: .STL, .OBJ, .3MF, .GCODE, .STEP');
+      setErrorMessage('Dozwolone są wyłącznie pliki modeli 3D: .STL, .OBJ, .3MF, .PLY, .GCODE, .STEP');
       return;
     }
 
@@ -108,22 +110,38 @@ export const OrderForm: React.FC<OrderFormProps> = ({ user, onOrderSuccess }) =>
     }
 
     setErrorMessage(null);
+    setModelMetrics(null);
     setSelectedFile(file);
   };
 
   const removeFile = () => {
     setSelectedFile(null);
+    setModelMetrics(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Dynamiczne szacowanie kosztu i czasu druku
+  // Kolor do podglądu 3D
+  const activeColor = COLORS.find(c => c.name === color);
+  const active3DColor = color === 'Czarny' ? '#334155' : (activeColor?.hex || '#2563eb');
+
+  // Dynamiczne szacowanie kosztu i czasu druku na podstawie metryk 3D lub pliku
   const calculateEstimates = () => {
-    const baseWeight = selectedFile ? Math.max(10, Math.round(selectedFile.size / (1024 * 25))) : 30;
     const infillFactor = parseInt(infill) / 20;
+    const infillRatio = parseInt(infill) / 100;
     const layerFactor = layerHeight.includes('0.12') ? 1.6 : layerHeight.includes('0.28') ? 0.75 : 1.0;
     const materialCostFactor = material === 'PC' ? 2.2 : material === 'TPU' ? 1.7 : material === 'ABS' ? 1.3 : 1.0;
+    
+    // Obliczanie wagi: jeśli mamy dokładną objętość z geometrii 3D, używamy jej!
+    let baseWeight = 30;
+    if (modelMetrics && modelMetrics.volumeCm3 > 0) {
+      const density = material === 'PC' ? 1.2 : material === 'TPU' ? 1.22 : material === 'PETG' ? 1.27 : material === 'ABS' ? 1.05 : 1.24;
+      const shellRatio = 0.22;
+      baseWeight = Math.max(8, Math.round(modelMetrics.volumeCm3 * density * (shellRatio + (1 - shellRatio) * infillRatio)));
+    } else if (selectedFile) {
+      baseWeight = Math.max(10, Math.round(selectedFile.size / (1024 * 25)));
+    }
     
     // Szacowany czas w minutach (K1 Max jest szybka!)
     const estMinutes = Math.round((baseWeight * 1.8 * infillFactor * layerFactor) * copies);
@@ -132,7 +150,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ user, onOrderSuccess }) =>
     // Szacowany koszt w PLN
     const estCost = Math.round((8 + baseWeight * 0.18 * materialCostFactor * infillFactor) * copies);
 
-    return { estMinutes, estHours, estCost };
+    return { estMinutes, estHours, estCost, estimatedWeight: baseWeight * copies };
   };
 
   const { estHours, estCost } = calculateEstimates();
@@ -241,28 +259,48 @@ export const OrderForm: React.FC<OrderFormProps> = ({ user, onOrderSuccess }) =>
                   </p>
                 </div>
               ) : (
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-700/80 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                      <FileText className="w-6 h-6" />
+                <div className="space-y-4">
+                  {/* Pasek informacji o pliku */}
+                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-700/80 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                        <FileText className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-white truncate max-w-[200px] sm:max-w-xs">
+                            {selectedFile.name}
+                          </p>
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-bold shrink-0">
+                            .{selectedFile.name.split('.').pop()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Interaktywny podgląd 3D
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-white truncate max-w-[240px] sm:max-w-sm">
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Gotowy do przetworzenia
-                      </p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      className="p-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors shrink-0"
+                      title="Usuń plik i wgraj inny"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeFile}
-                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                    title="Usuń plik"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+
+                  {/* Interaktywny silnik podglądu Three.js */}
+                  <div className="space-y-2">
+                    <ModelViewer3D
+                      file={selectedFile}
+                      filamentColorHex={active3DColor}
+                      onMetricsCalculated={(m) => setModelMetrics(m)}
+                    />
+                    <p className="text-[11px] text-slate-500 px-1">
+                      Wskazówka: model 3D w czasie rzeczywistym przyjmuje kolor wybranego poniżej filamentu ({color}).
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -477,6 +515,24 @@ export const OrderForm: React.FC<OrderFormProps> = ({ user, onOrderSuccess }) =>
 
               {/* Lista wybranych parametrów */}
               <div className="space-y-2 text-xs border-y border-slate-800/80 py-4 text-slate-300">
+                {modelMetrics && (
+                  <div className="p-3 mb-2 rounded-xl bg-slate-950/70 border border-slate-800/90 text-xs space-y-1.5 font-mono">
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="text-[11px] text-slate-400 font-sans">Wymiary modelu:</span>
+                      <span className="text-cyan-400 font-semibold">{modelMetrics.width} × {modelMetrics.depth} × {modelMetrics.height} mm</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="text-[11px] text-slate-400 font-sans">Objętość bryły:</span>
+                      <span className="text-slate-200">~{modelMetrics.volumeCm3} cm³</span>
+                    </div>
+                    {!modelMetrics.fitsK1Max && (
+                      <div className="text-[11px] text-amber-400 font-sans pt-1.5 border-t border-slate-800 flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>Przekracza pole 300 mm – wymaga skalowania!</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-slate-400">Drukarka docelowa:</span>
                   <span className="font-semibold text-white">Creality K1 Max (CoreXY)</span>

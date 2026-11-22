@@ -7,6 +7,8 @@ interface NavbarProps {
   onOpenLogin: () => void;
   onLogout: () => void;
   isBackendConnected: boolean;
+  currentPage: 'home' | 'contact';
+  onNavigate: (page: 'home' | 'contact', targetId?: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -14,6 +16,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLogin,
   onLogout,
   isBackendConnected,
+  currentPage,
+  onNavigate,
 }) => {
   return (
     <nav className="sticky top-0 z-40 w-full backdrop-blur-xl bg-slate-950/80 border-b border-slate-800/80 transition-all">
@@ -21,7 +25,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-20">
           
           {/* Logo i Nazwa Projektu */}
-          <a href="#" className="flex items-center gap-3 group">
+          <button 
+            onClick={() => onNavigate('home')} 
+            className="flex items-center gap-3 group text-left focus:outline-none"
+          >
             <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 p-0.5 shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300">
               <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
                 <Box className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform duration-300" />
@@ -38,22 +45,48 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
               <p className="text-xs text-slate-400 font-medium">Nowoczesna platforma druku 3D na żądanie</p>
             </div>
-          </a>
+          </button>
 
           {/* Menu linków */}
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <a href="#order-section" className="hover:text-cyan-400 transition-colors">
+          <div className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+            <button
+              onClick={() => onNavigate('home')}
+              className={`transition-colors ${
+                currentPage === 'home'
+                  ? 'text-cyan-400 font-semibold'
+                  : 'hover:text-cyan-400 text-slate-300'
+              }`}
+            >
+              Strona Główna
+            </button>
+            <button
+              onClick={() => onNavigate('home', 'order-section')}
+              className="hover:text-cyan-400 transition-colors text-slate-300"
+            >
               Złóż Zamówienie
-            </a>
-            <a href="#printer-specs" className="hover:text-cyan-400 transition-colors">
+            </button>
+            <button
+              onClick={() => onNavigate('home', 'printer-specs')}
+              className="hover:text-cyan-400 transition-colors text-slate-300"
+            >
               Creality K1 Max
-            </a>
-            <a href="#materials" className="hover:text-cyan-400 transition-colors">
+            </button>
+            <button
+              onClick={() => onNavigate('home', 'materials')}
+              className="hover:text-cyan-400 transition-colors text-slate-300"
+            >
               Materiały
-            </a>
-            <a href="#faq" className="hover:text-cyan-400 transition-colors">
-              Instrukcja
-            </a>
+            </button>
+            <button
+              onClick={() => onNavigate('contact')}
+              className={`transition-colors px-3 py-1.5 rounded-lg border ${
+                currentPage === 'contact'
+                  ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 font-semibold shadow-sm shadow-cyan-500/20'
+                  : 'border-transparent hover:text-cyan-400 text-slate-300 hover:border-slate-800'
+              }`}
+            >
+              Kontakt
+            </button>
           </div>
 
           {/* Prawa strona: wskaźnik API + przycisk logowania */}

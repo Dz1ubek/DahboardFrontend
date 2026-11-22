@@ -1,15 +1,13 @@
 import React from 'react';
 import { PrinterStatus } from '../types';
-import { 
-  Flame, 
-  Layers, 
-  Eye, 
-  Wind, 
-  Maximize2, 
-  Clock, 
-  CheckCircle2, 
-  Sliders, 
-  Activity 
+import {
+  Flame,
+  Eye,
+  Wind,
+  Maximize2,
+  Clock,
+  Sliders,
+  Activity
 } from 'lucide-react';
 
 interface PrinterShowcaseProps {
@@ -23,7 +21,7 @@ export const PrinterShowcase: React.FC<PrinterShowcaseProps> = ({ status }) => {
   return (
     <section id="printer-specs" className="py-20 bg-slate-900/40 border-y border-slate-800/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Nagłówek sekcji */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-3">
@@ -38,15 +36,15 @@ export const PrinterShowcase: React.FC<PrinterShowcaseProps> = ({ status }) => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-          
+
           {/* Kolumna po lewej: Karta ze zdjęciem drukarki Creality K1 Max */}
           <div className="lg:col-span-7 relative group">
-            
+
             {/* Ozdobny neon glow w tle */}
             <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500" />
-            
+
             <div className="relative rounded-2xl bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-slate-800 p-6 sm:p-8 overflow-hidden shadow-2xl">
-              
+
               {/* Badge statusu urządzenia */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -114,7 +112,7 @@ export const PrinterShowcase: React.FC<PrinterShowcaseProps> = ({ status }) => {
 
           {/* Kolumna po prawej: Parametry techniczne i przewagi K1 Max */}
           <div className="lg:col-span-5 space-y-5">
-            
+
             <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-colors">
               <div className="flex items-start gap-4">
                 <div className="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
